@@ -1,28 +1,42 @@
-from web3 import Web3
-from web3.middleware import geth_poa_middleware
+from web3 import AsyncWeb3
+from web3.middleware import async_geth_poa_middleware
 from datetime import datetime
+import sqlconnect as sql
+import asyncio
+
+provider_url = 'https://arbitrum-one.publicnode.com'
+web3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(provider_url))
+web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
+
+current_block = 23645280
+end_block = await web3.eth.block_number
 
 
-def main():
-    provider_url = 'https://arbitrum-one.publicnode.com'
-    web3 = Web3(Web3.HTTPProvider(provider_url))
-    web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+# вынести провайдер юрл и тд за пределы функции
+async def parser(async_func_num, total_instances):
+    for i in range(current_block, end_block + 1):
+        if i % total_instances == async_func_num:
+            print(f"////////////////////////////////////////////////////////////////////////////////////\nCurrent block"
+                  f" number: {i}")
+            curr_block = await web3.eth.get_block(i, True)
+            sc_date = datetime.fromtimestamp(curr_block['timestamp'])
+            print(sc_date)
+            for trans in curr_block['transactions']:
+                print(f'Hash: {trans.hash.hex()}')
+                print(f'From: {trans["from"]}')
+                print(f'To: {trans.to}')
+                if trans.to == '0x6C2C06790b3E3E3c38e12Ee22F8183b37a13EE55':
+                    print("Adress coincided!!!\n")
+                    await sql.set_matched_adress(i, sc_date, trans.hash.hex(), trans["from"], trans.to)
+            print('////////////////////////////////////////////////////////////////////////////////////\n')
 
-    print(web3.eth.get_block(web3.eth.block_number, True))
-    for i in range(23645280, web3.eth.block_number + 1):
-        print(f"Current block number: {i}")
-        curr_block = web3.eth.get_block(i, True)
-        sc_date = datetime.fromtimestamp(curr_block['timestamp'])
-        print(sc_date)
-        for trans in curr_block['transactions']:
-            print(f'Hash: {trans.hash.hex()}')
-            print(f'From: {trans["from"]}')
-            print(f'To: {trans.to}')
-            if trans.to == ['0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614']:
-                print("Adress coincided!!!\n")
-        print('\n')
 
+async def main():
+    total_instances = 1
+    tasks = [parser(async_func_num, total_instances) for async_func_num in range(total_instances)]
+    await sql.setup_db()
+    await asyncio.gather(*tasks)
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
