@@ -32,7 +32,7 @@ async def main():
     current_block = 23645280
     end_block = await web3.eth.block_number
 
-    total_instances = 2
+    total_instances = 100
     tasks = [parser(async_func_num, total_instances, current_block, end_block, web3) for async_func_num in
              range(total_instances)]
     await sql.setup_db()
