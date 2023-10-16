@@ -4,16 +4,9 @@ from datetime import datetime
 import sqlconnect as sql
 import asyncio
 
-provider_url = 'https://arbitrum-one.publicnode.com'
-web3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(provider_url))
-web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
-
-current_block = 23645280
-end_block = await web3.eth.block_number
-
 
 # вынести провайдер юрл и тд за пределы функции
-async def parser(async_func_num, total_instances):
+async def parser(async_func_num, total_instances, current_block, end_block, web3):
     for i in range(current_block, end_block + 1):
         if i % total_instances == async_func_num:
             print(f"////////////////////////////////////////////////////////////////////////////////////\nCurrent block"
@@ -32,8 +25,16 @@ async def parser(async_func_num, total_instances):
 
 
 async def main():
-    total_instances = 1
-    tasks = [parser(async_func_num, total_instances) for async_func_num in range(total_instances)]
+    provider_url = 'https://arbitrum-one.publicnode.com'
+    web3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(provider_url))
+    web3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
+
+    current_block = 23645280
+    end_block = await web3.eth.block_number
+
+    total_instances = 2
+    tasks = [parser(async_func_num, total_instances, current_block, end_block, web3) for async_func_num in
+             range(total_instances)]
     await sql.setup_db()
     await asyncio.gather(*tasks)
 
